@@ -178,56 +178,25 @@
           };
         }
 
+        var state = window.ProceduralSynthState;
+        if (!state.ctx) {
+          state.ctx = new AudioCtx();
+        }
+
         window.ProceduralSynthWarmupIosOutput = window.ProceduralSynthWarmupIosOutput || warmupIosOutput;
+        warmupIosOutput(state.ctx);
 
-        window.ProceduralSynthEnsureAudioUnlocked = window.ProceduralSynthEnsureAudioUnlocked || function() {
-          var state = window.ProceduralSynthState;
-          if (!state.ctx) {
-            state.ctx = new AudioCtx();
-          }
-
-          if (!state.node) {
-            state.master = state.ctx.createGain();
-            state.master.gain.value = 1.0;
-
-            state.node = state.ctx.createScriptProcessor(1024, 1, 2);
-            state.node.onaudioprocess = function(evt) {
-              var left = evt.outputBuffer.getChannelData(0);
-              var right = evt.outputBuffer.numberOfChannels > 1 ? evt.outputBuffer.getChannelData(1) : left;
-              left.fill(0);
-              if (right !== left) right.fill(0);
-            };
-
-            if (state.ctx.createConstantSource) {
-              state.driver = state.ctx.createConstantSource();
-              state.driver.offset.value = 0.000001;
-              state.driver.connect(state.node);
-              state.driver.start();
-            } else if (state.ctx.createOscillator) {
-              state.driver = state.ctx.createOscillator();
-              var driverGain = state.ctx.createGain();
-              driverGain.gain.value = 0.000001;
-              state.driver.frequency.value = 20;
-              state.driver.connect(driverGain);
-              driverGain.connect(state.node);
-              state.driver.start();
+        if (state.ctx.state === "suspended") {
+          try {
+            var resumePromise = state.ctx.resume();
+            if (resumePromise && typeof resumePromise.then === "function") {
+              resumePromise.then(function() {
+                warmupIosOutput(state.ctx);
+              });
             }
-
-            state.node.connect(state.master);
-            state.master.connect(state.ctx.destination);
+          } catch (e) {
           }
-
-          warmupIosOutput(state.ctx);
-
-          if (state.ctx.state === "suspended") {
-            try {
-              state.ctx.resume();
-            } catch (e) {
-            }
-          }
-        };
-
-        window.ProceduralSynthEnsureAudioUnlocked();
+        }
       }
 
       function startUnityRuntime() {
