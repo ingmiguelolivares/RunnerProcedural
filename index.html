@@ -130,7 +130,6 @@
       var loaderUrl = buildUrl + "/RunnerProcedural.loader.js";
       var unityInstance = null;
       var unityBootStarted = false;
-      var unityStartedFromIosTap = false;
 
       var config = {
         dataUrl: buildUrl + "/RunnerProcedural.data.unityweb",
@@ -247,14 +246,6 @@
             unityInstance = instance;
             loadingBar.style.display = "none";
 
-            if (unityStartedFromIosTap) {
-              setTimeout(function() {
-                try {
-                  unityInstance.SendMessage("HUD", "BeginFromExternalTap");
-                } catch (e) {
-                }
-              }, 0);
-            }
           }).catch(function(message) {
             alert(message);
           });
@@ -269,9 +260,8 @@
             return;
           }
 
-          unityStartedFromIosTap = true;
           iosStartButton.disabled = true;
-          iosStartStatus.textContent = "Starting audio and loading scene...";
+          iosStartStatus.textContent = "Unlocking audio and loading scene...";
           primeProceduralAudioFromGesture();
           iosStartOverlay.style.display = "none";
           startUnityRuntime();
