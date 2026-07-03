@@ -10,10 +10,6 @@
   <body>
     <div id="unity-container" class="unity-desktop">
       <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
-      <div id="unity-ios-start" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,.82); color:#fff; align-items:center; justify-content:center; flex-direction:column; text-align:center; padding:24px; z-index:10;">
-        <button id="unity-ios-start-button" style="font:inherit; padding:14px 22px; border:0; border-radius:10px; background:#fff; color:#000; cursor:pointer;">Tap to start</button>
-        <p style="margin-top:14px;">En iPhone, Safari necesita una interacción del usuario para habilitar el audio.</p>
-      </div>
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
@@ -29,19 +25,6 @@
     </div>
     <script>
       var canvas = document.querySelector("#unity-canvas");
-      var unityContainer = document.querySelector("#unity-container");
-      var iosStartOverlay = document.querySelector("#unity-ios-start");
-      var iosStartButton = document.querySelector("#unity-ios-start-button");
-      var unityLoadingBar = document.querySelector("#unity-loading-bar");
-      var unityFullscreenButton = document.querySelector("#unity-fullscreen-button");
-      var unityProgressBarFull = document.querySelector("#unity-progress-bar-full");
-      var unityInstance = null;
-      var unityHasStarted = false;
-      var unityLoaderReady = false;
-      var unityLoaderFailed = false;
-      var pendingStartAfterLoader = false;
-      var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-        (navigator.userAgent.includes("Mac") && "ontouchend" in document);
 
       // Shows a temporary message banner/ribbon for a few seconds, or
       // a permanent error message on top of the canvas if type=='error'.
@@ -125,95 +108,25 @@
         canvas.style.height = "600px";
       }
 
-      function unlockPageAudio() {
-        var audioContextCtor = window.AudioContext || window.webkitAudioContext;
-        if (audioContextCtor) {
-          try {
-            var context = new audioContextCtor();
-            if (context.state === "suspended") {
-              context.resume();
-            }
-            var buffer = context.createBuffer(1, 1, 22050);
-            var source = context.createBufferSource();
-            source.buffer = buffer;
-            source.connect(context.destination);
-            source.start(0);
-          } catch (error) {
-          }
-        }
-
-        document.querySelectorAll("audio, video").forEach((mediaElement) => {
-          var playAttempt = mediaElement.play();
-          if (playAttempt && typeof playAttempt.catch === "function") {
-            playAttempt.catch(() => {});
-          }
-          mediaElement.pause();
-        });
-      }
-
-      function actuallyStartUnity() {
-        if (unityHasStarted) return;
-        unityHasStarted = true;
-        iosStartOverlay.style.display = "none";
-        unityLoadingBar.style.display = "block";
-        unlockPageAudio();
-        createUnityInstance(canvas, config, (progress) => {
-          unityProgressBarFull.style.width = 100 * progress + "%";
-        }).then((createdUnityInstance) => {
-          unityInstance = createdUnityInstance;
-          unityLoadingBar.style.display = "none";
-          unityFullscreenButton.onclick = () => {
-            unityInstance.SetFullscreen(1);
-          };
-          unlockPageAudio();
-        }).catch((message) => {
-          alert(message);
-        });
-      }
-
-      function startUnity() {
-        if (unityHasStarted) return;
-        if (unityLoaderFailed) {
-          alert("No se pudo cargar el runtime de Unity.");
-          return;
-        }
-        if (!unityLoaderReady) {
-          pendingStartAfterLoader = true;
-          iosStartButton.disabled = true;
-          iosStartButton.textContent = "Loading...";
-          return;
-        }
-        actuallyStartUnity();
-      }
+      document.querySelector("#unity-loading-bar").style.display = "block";
 
       var script = document.createElement("script");
       script.src = loaderUrl;
       script.onload = () => {
-        unityLoaderReady = true;
-        if (pendingStartAfterLoader) {
-          actuallyStartUnity();
-        } else if (!isIOS) {
-          startUnity();
-        }
-      };
-      script.onerror = () => {
-        unityLoaderFailed = true;
-        iosStartButton.disabled = true;
-        iosStartButton.textContent = "Load failed";
-        alert("No se pudo cargar el archivo loader de Unity.");
-      };
-      document.body.appendChild(script);
+        createUnityInstance(canvas, config, (progress) => {
+          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+              }).then((unityInstance) => {
+                document.querySelector("#unity-loading-bar").style.display = "none";
+                document.querySelector("#unity-fullscreen-button").onclick = () => {
+                  unityInstance.SetFullscreen(1);
+                };
 
-      if (isIOS) {
-        unityContainer.classList.add("unity-mobile");
-        iosStartOverlay.style.display = "flex";
-        iosStartButton.addEventListener("click", startUnity, { once: true });
-        iosStartButton.addEventListener("touchend", startUnity, { once: true });
-      } else {
-        if (unityLoaderReady) {
-          startUnity();
-        }
-      }
+              }).catch((message) => {
+                alert(message);
+              });
+            };
+
+      document.body.appendChild(script);
 
     </script>
   </body>
